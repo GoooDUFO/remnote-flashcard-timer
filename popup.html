@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>RemNote Flashcard Timer</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+
+      /* Both html and body are pinned: Chrome sizes the popup from the
+         document, and leaving html unconstrained lets it balloon to the
+         800px maximum with the content stranded in one corner. */
+      html, body { width: 292px; }
+
+      body {
+        margin: 0;
+        padding: 13px 14px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+        font-size: 13px;
+        line-height: 1.3;
+        background: #fff;
+        color: #16161a;
+      }
+
+      /* Title and master switch share a row — the switch is the first thing
+         you see, and it costs no extra height. */
+      .bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 11px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.2px;
+      }
+      .switch { position: relative; width: 34px; height: 20px; flex: none; }
+      .switch input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .switch .track {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.22);
+        transition: background 0.15s ease;
+        pointer-events: none;
+      }
+      .switch .knob {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        transition: transform 0.15s ease;
+        pointer-events: none;
+      }
+      .switch input:checked ~ .track { background: #6366f1; }
+      .switch input:checked ~ .knob { transform: translateX(14px); }
+      .switch input:focus-visible ~ .track { outline: 2px solid #6366f1; outline-offset: 2px; }
+
+      /* Everything below the master switch only applies while it's on. */
+      #rest { transition: opacity 0.15s ease; }
+      body.off #rest { opacity: 0.42; }
+
+      /* Overtime budget */
+      .gamecfg {
+        display: none;
+        margin: 4px 0 2px 22px;
+        font-size: 11px;
+        opacity: 0.75;
+      }
+      body.game .gamecfg { display: block; }
+      .gamecfg .line {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 3px;
+      }
+      .gamecfg input {
+        width: 38px;
+        padding: 2px 3px;
+        font: inherit;
+        text-align: center;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 5px;
+        background: transparent;
+        color: inherit;
+      }
+      .stats {
+        display: none;
+        margin: 5px 0 0 22px;
+        font-size: 11px;
+        line-height: 1.5;
+        opacity: 0.72;
+      }
+      body.game .stats { display: block; }
+      .stats b { font-weight: 600; opacity: 0.95; }
+      .stats button {
+        margin-top: 3px;
+        padding: 2px 7px;
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 5px;
+        background: transparent;
+        color: inherit;
+      }
+      .stats button:hover { border-color: #6366f1; background: rgba(99, 102, 241, 0.12); }
+
+      .head {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      .durrow { display: flex; align-items: center; gap: 9px; }
+      input[type="range"] { flex: 1; min-width: 0; accent-color: #6366f1; }
+      input[type="number"] {
+        width: 54px;
+        padding: 4px 5px;
+        font: inherit;
+        text-align: center;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+      }
+      .presets { display: flex; gap: 5px; margin-top: 7px; }
+      .presets button {
+        flex: 1;
+        min-width: 0;
+        padding: 4px 0;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+      }
+      .presets button:hover { background: rgba(99, 102, 241, 0.12); border-color: #6366f1; }
+
+      hr { border: 0; border-top: 1px solid rgba(0, 0, 0, 0.1); margin: 9px 0 7px; }
+
+      .toggle {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 3px 0;
+        cursor: pointer;
+      }
+      .toggle input { margin: 0; accent-color: #6366f1; }
+      .toggle small {
+        display: block;
+        margin-top: 1px;
+        opacity: 0.58;
+        font-size: 11px;
+        line-height: 1.3;
+      }
+
+      .tip { margin: 9px 0 0; font-size: 11px; opacity: 0.55; line-height: 1.35; }
+      .tip kbd {
+        font: inherit;
+        font-weight: 600;
+        padding: 0 3px;
+        border: 1px solid rgba(127, 127, 127, 0.45);
+        border-radius: 4px;
+      }
+      .tip a { color: inherit; }
+
+      @media (prefers-color-scheme: dark) {
+        body { background: #1c1c20; color: #eee; }
+        input[type="number"], .presets button { border-color: rgba(255, 255, 255, 0.2); }
+        hr { border-top-color: rgba(255, 255, 255, 0.14); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <h1>RemNote Flashcard Timer</h1>
+      <label class="switch" title="Turn the timer on or off">
+        <input id="enabled" type="checkbox" />
+        <span class="track"></span>
+        <span class="knob"></span>
+      </label>
+    </div>
+
+    <div id="rest">
+    <label class="head" for="duration">Seconds per card</label>
+    <div class="durrow">
+      <input id="duration" type="range" min="3" max="180" step="1" />
+      <input id="durationNum" type="number" min="1" max="3600" />
+    </div>
+    <div class="presets">
+      <button data-preset="10">10s</button>
+      <button data-preset="15">15s</button>
+      <button data-preset="20">20s</button>
+      <button data-preset="30">30s</button>
+      <button data-preset="60">60s</button>
+    </div>
+
+    <hr />
+
+    <label class="toggle">
+      <input id="sound" type="checkbox" />
+      <span>Beep at zero</span>
+    </label>
+
+    <label class="toggle">
+      <input id="warn" type="checkbox" />
+      <span>Soft cue at 25% left</span>
+    </label>
+
+    <label class="toggle">
+      <input id="overtime" type="checkbox" />
+      <span>Count up past zero <small>How far over you ran, in red.</small></span>
+    </label>
+
+    <label class="toggle">
+      <input id="pauseOnAnswer" type="checkbox" />
+      <span>Hide on the review step <small>Times your recall only.</small></span>
+    </label>
+
+    <label class="toggle">
+      <input id="pauseHidden" type="checkbox" />
+      <span>Pause in background tabs</span>
+    </label>
+
+    <label class="toggle">
+      <input id="onlyInQueue" type="checkbox" />
+      <span>Only in the flashcard queue</span>
+    </label>
+
+    <hr />
+
+    <label class="toggle">
+      <input id="game" type="checkbox" />
+      <span>Overtime budget <small>Beat the clock or spend a token.</small></span>
+    </label>
+    <div class="gamecfg">
+      <div class="line">
+        <input id="gameTokens" type="number" min="1" max="20" title="How many tokens you hold" />
+        <span>tokens</span>
+      </div>
+      <div class="line">
+        <span>refill</span>
+        <input id="gameRefillAmount" type="number" min="1" max="20" title="Tokens returned each refill" />
+        <span>every</span>
+        <input id="gameRefillEvery" type="number" min="1" max="500" title="Cards between refills" />
+        <span>cards</span>
+      </div>
+    </div>
+    <p class="stats" id="stats"></p>
+
+    <hr />
+
+    <label class="toggle">
+      <input id="debug" type="checkbox" />
+      <span>Diagnostic panel <small>What the extension detects.</small></span>
+    </label>
+
+    <hr />
+    <p class="tip">Drag to move. Pause: <kbd id="shortcut">…</kbd> · <a href="#" id="rebind">change</a></p>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

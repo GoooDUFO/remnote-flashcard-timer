@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "RemNote Flashcard Timer",
+  "version": "1.0.0",
+  "description": "A per-flashcard countdown timer for RemNote that resets automatically when you move to the next card.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.remnote.com/*",
+    "https://*.remnote.io/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.remnote.com/*",
+        "https://*.remnote.io/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "RemNote Flashcard Timer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "toggle-pause": {
+      "suggested_key": {
+        "default": "Alt+Shift+P"
+      },
+      "description": "Pause / resume the card timer"
+    }
+  }
+}
