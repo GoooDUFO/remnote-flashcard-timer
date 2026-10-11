@@ -169,3 +169,7 @@ Note that the report includes a short snippet of the card currently on screen.
 - The widget lives in a shadow root, so RemNote's CSS can't affect it and it
   can't affect RemNote's.
 - No network access, no analytics, no data leaves the page.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
